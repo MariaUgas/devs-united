@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { firestore } from "../firebase";
-//import { getAllTweets } from "./firebaseDB";
 
 const Home = () => {
   const [tweets, setTweets] = useState([]);
