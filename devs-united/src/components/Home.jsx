@@ -4,6 +4,7 @@ import { firestore } from "../firebase";
 const Home = () => {
   const [tweets, setTweets] = useState([]);
   const [infTweet, setInfTweet] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
 
   const getAllTweets = () => {
     firestore
@@ -14,6 +15,7 @@ const Home = () => {
           return {
             message: doc.data().message,
             user: doc.data().user,
+            likes: doc.data().likes || 0,
             id: doc.id,
           };
         });
@@ -42,8 +44,44 @@ const Home = () => {
       .catch((err) => console.error(err.message));
   };
 
+  const updateTweet = (tweet) => {
+    firestore.collection("tweets");
+    firestore
+      .doc(`tweets/${tweet.id}`)
+      .update({ likes: tweet.likes + 1 })
+      .then(() => {
+        getAllTweets();
+      })
+      .catch((err) => console.error(err.message));
+  };
+  const updateMsgTweet = (tweet) => {
+    setIsEditing(!isEditing);
+    firestore.collection("tweets");
+    firestore
+      .doc(`tweets/${tweet.id}`)
+      .update(infTweet)
+      .then(() => {
+        getAllTweets();
+      })
+      .catch((err) => console.error(err.message));
+  };
+
   useEffect(() => {
-    getAllTweets();
+    const desuscribir = firestore
+      .collection("tweets")
+      .onSnapshot((snapshot) => {
+        const tweets = snapshot.docs.map((doc) => {
+          return {
+            message: doc.data().message,
+            user: doc.data().user,
+            likes: doc.data().likes,
+            id: doc.id,
+          };
+        });
+        setTweets(tweets);
+      });
+
+    return () => desuscribir();
   }, []);
 
   const handleChange = (e) => {
@@ -53,6 +91,7 @@ const Home = () => {
     };
     setInfTweet(newTweet);
   };
+
   return (
     <>
       <div>
@@ -90,14 +129,43 @@ const Home = () => {
           return (
             <>
               <div key={tweet.id}>
-                <strong>
-                  <label class="lbl-name">{tweet.user}</label>
-                </strong>
+                <h4>autor: {tweet.user}</h4>
+                <label>likes: {tweet.likes}</label>
 
-                <p class="txt-tweets">{tweet.message}</p>
+                <div>
+                  {isEditing ? (
+                    <textarea
+                      key={"txt" + tweet.id}
+                      onChange={handleChange}
+                      placeholder="Ingrese un mensaje"
+                      name="message"
+                    >
+                      {tweet.message}
+                    </textarea>
+                  ) : (
+                    <div onDoubleClick={() => setIsEditing(!isEditing)}>
+                      <textarea
+                        key={"txt" + tweet.id}
+                        disabled="true"
+                        name="message"
+                        value={tweet.message}
+                      ></textarea>
+                    </div>
+                    // <p class="txt-tweets">{tweet.message}</p>
+                  )}
+                </div>
+
+                {isEditing ? (
+                  <button onClick={() => updateMsgTweet(tweet)}>
+                    Actualizar tweet
+                  </button>
+                ) : (
+                  <></>
+                )}
                 <button onClick={() => deleteTweet(tweet.id)}>
                   Eliminar tweet
                 </button>
+                <button onClick={() => updateTweet(tweet)}>Me gusta</button>
               </div>
               <hr />
             </>
