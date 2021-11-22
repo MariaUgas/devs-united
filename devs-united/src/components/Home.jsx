@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { firestore } from "../firebase";
+import { firestore, storage } from "../firebase";
 
 const Home = () => {
   const [tweets, setTweets] = useState([]);
   const [infTweet, setInfTweet] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
-
+  const [file, setFile] = useState([]);
+  const [progress, setProgress] = useState(0);
   const getAllTweets = () => {
     firestore
       .collection("tweets")
@@ -24,13 +25,29 @@ const Home = () => {
   };
   const createTweet = (e) => {
     e.preventDefault();
-    firestore
-      .collection("tweets")
-      .add(infTweet)
-      .then(() => {
-        getAllTweets();
-      })
-      .catch((err) => console.error(err.message));
+    const uploadTask = storage.ref().child(`/tweet/${file.name}`).put(file);
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => {
+        let progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setProgress(progress);
+      },
+      (err) => {
+        console.log("Error al intentar subir la image");
+      },
+      () => {
+        uploadTask.snapshot.ref.getDownloadURL().then((url) => {
+          firestore
+            .collection("tweets")
+            .add({ ...infTweet, image: url })
+            .then(() => {
+              console.log("Este es el bueno");
+            })
+            .catch((err) => console.error(err.message));
+        });
+        setProgress(0);
+      }
+    );
   };
 
   const deleteTweet = (idDocTweet) => {
@@ -66,6 +83,17 @@ const Home = () => {
       .catch((err) => console.error(err.message));
   };
 
+  const handlerUpload = (e) => {
+    setFile(e.target.files[0]);
+    // storage
+    //   .ref()
+    //   .child("tweets/holaMundo")
+    //   .put(e.target.files[0])
+    //   .then(() => {
+    //     console.log("Operacion Exitosa");
+    //   });
+  };
+
   useEffect(() => {
     const desuscribir = firestore
       .collection("tweets")
@@ -74,7 +102,8 @@ const Home = () => {
           return {
             message: doc.data().message,
             user: doc.data().user,
-            likes: doc.data().likes,
+            likes: doc.data().likes || 0,
+            likes: doc.data().image || false,
             id: doc.id,
           };
         });
@@ -116,6 +145,14 @@ const Home = () => {
           ></textarea>
           <br />
           <br />
+          {{ progress } && (
+            <progress max="100" value={progress}>
+              {progress}
+            </progress>
+          )}
+          <input type="file" onChange={handlerUpload} />
+          <br />
+          <br />
           <input type="submit" value="Enviar" />
         </form>
       </div>
@@ -129,6 +166,11 @@ const Home = () => {
           return (
             <>
               <div key={tweet.id}>
+                {tweet.image && (
+                  <img width="100" height="100" src={tweet.image} />
+                )}
+                <br />
+                <br />
                 <h4>autor: {tweet.user}</h4>
                 <label>likes: {tweet.likes}</label>
 
