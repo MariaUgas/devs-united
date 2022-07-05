@@ -17,6 +17,7 @@ const Home = () => {
             message: doc.data().message,
             user: doc.data().user,
             likes: doc.data().likes || 0,
+            image: doc.data().image || false,
             id: doc.id,
           };
         });
@@ -37,6 +38,9 @@ const Home = () => {
       },
       () => {
         uploadTask.snapshot.ref.getDownloadURL().then((url) => {
+          if (Object.entries(file).length === 0) {
+            url = false;
+          }
           firestore
             .collection("tweets")
             .add({ ...infTweet, image: url })
@@ -103,7 +107,7 @@ const Home = () => {
             message: doc.data().message,
             user: doc.data().user,
             likes: doc.data().likes || 0,
-            likes: doc.data().image || false,
+            image: doc.data().image || false,
             id: doc.id,
           };
         });
